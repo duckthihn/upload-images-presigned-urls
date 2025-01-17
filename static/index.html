@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Image Upload</title>
+    <style>
+      .image-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 20px;
+      }
+      .image-container img {
+        max-width: 200px;
+        height: auto;
+      }
+      .debug-info {
+        margin-top: 20px;
+        padding: 10px;
+        background-color: #f0f0f0;
+        border-radius: 4px;
+        font-family: monospace;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Image Upload</h1>
+    <input type="file" id="fileInput" accept="image/*" />
+    <button onclick="uploadFile()">Upload</button>
+    <div id="debug" class="debug-info"></div>
+    <div id="images" class="image-container"></div>
+
+    <script>
+      function showDebugInfo(info) {
+        const debugDiv = document.getElementById("debug");
+        debugDiv.textContent = JSON.stringify(info, null, 2);
+      }
+
+      async function uploadFile() {
+        const fileInput = document.getElementById("fileInput");
+        const file = fileInput.files[0];
+        if (!file) {
+          alert("Please select a file");
+          return;
+        }
+
+        try {
+          // Get presigned URL
+          const response = await fetch(`/presign?filename=${file.name}`);
+          const data = await response.json();
+
+          showDebugInfo({
+            status: "Attempting upload",
+            presignedUrl: data.url,
+            endpoint: data.endpoint,
+            bucket: data.bucket,
+            filename: data.filename,
+          });
+
+          // Upload file using presigned URL
+          const uploadResponse = await fetch(data.url, {
+            method: "PUT",
+            body: file,
+            headers: {
+              "Content-Type": file.type,
+            },
+          });
+
+          showDebugInfo({
+            status: "Upload completed",
+            uploadStatus: uploadResponse.status,
+            uploadStatusText: uploadResponse.statusText,
+            originalUrl: data.url,
+          });
+
+          alert("Upload successful!");
+          loadImages();
+        } catch (error) {
+          console.error("Error:", error);
+          showDebugInfo({
+            status: "Error occurred",
+            error: error.message,
+          });
+          alert("Upload failed");
+        }
+      }
+
+      async function loadImages() {
+        try {
+          const response = await fetch("/images");
+          const data = await response.json();
+
+          showDebugInfo({
+            status: "Loading images",
+            imageUrls: data.images,
+          });
+
+          const container = document.getElementById("images");
+          container.innerHTML = "";
+
+          data.images.forEach((url) => {
+            const img = document.createElement("img");
+            img.src = url;
+            container.appendChild(img);
+          });
+        } catch (error) {
+          console.error("Error loading images:", error);
+          showDebugInfo({
+            status: "Error loading images",
+            error: error.message,
+          });
+          alert("Failed to load images");
+        }
+      }
+
+      // Load images on page load
+      loadImages();
+    </script>
+  </body>
+</html>
