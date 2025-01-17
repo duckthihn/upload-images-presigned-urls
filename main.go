@@ -24,9 +24,13 @@ func main() {
     }
     log.Printf("Connecting to Minio at: %s", minioEndpoint)
 
+	// Retrieve Minio credentials from .env
+	accessKey := os.Getenv("MINIO_ROOT_USER")
+	secretKey := os.Getenv("MINIO_ROOT_PASSWORD")
+	
     // Initialize Minio client
     minioClient, err := minio.New(minioEndpoint, &minio.Options{
-        Creds:  credentials.NewStaticV4("minioadmin", "minioadmin", ""),
+        Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
         Secure: false,
     })
     if err != nil {
